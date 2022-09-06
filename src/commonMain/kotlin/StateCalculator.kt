@@ -123,10 +123,10 @@ data class ParticleState(var mass: Float, var posX: Float, var posY: Float) {
     var anchorX = 0f
     var anchorY = 0f
 
-    fun applyRule(otherAtoms: List<ParticleState>, gravity: Float, gravityWell: Double) {
-        val (forceX, forceY) = calculateForce(otherAtoms, gravity, gravityWell)
-        val (newX, newVelX) = calculateXposAndVel(forceX)
-        val (newY, newVelY) = calculateYposAndVel(forceY)
+    fun applyRule(otherParticles: List<ParticleState>, gravity: Float, gravityWell: Double) {
+        val (forceX, forceY) = calculateForce(otherParticles, gravity, gravityWell)
+        val (newX, newVelX) = calculateXPosXVel(forceX)
+        val (newY, newVelY) = calculateYPosYVel(forceY)
 
         posX = newX
         posY = newY
@@ -138,15 +138,19 @@ data class ParticleState(var mass: Float, var posX: Float, var posY: Float) {
         anchorY = (MainConstants.BITMAP_SIZE * scaleY) / 2f
     }
 
-    private fun calculateForce(otherAtoms: List<ParticleState>, gravity: Float, gravityWell: Double): Pair<Float, Float> {
+    private fun calculateForce(
+        otherParticles: List<ParticleState>,
+        gravity: Float,
+        gravityWell: Double
+    ): Pair<Float, Float> {
         var forceX = 0.0f
         var forceY = 0.0f
-        otherAtoms.fastForEach { otherAtom ->
-            val disX = posX - otherAtom.posX
-            val disY = posY - otherAtom.posY
+        otherParticles.fastForEach { otherParticle ->
+            val disX = posX - otherParticle.posX
+            val disY = posY - otherParticle.posY
             val disTotal = sqrt(disX*disX + disY*disY)
             if (disTotal > 0 && disTotal < gravityWell) {
-                val force = (gravity * mass * otherAtom.mass) / (disTotal * disTotal)
+                val force = (gravity * mass * otherParticle.mass) / (disTotal * disTotal)
                 forceX += (force * disX)
                 forceY += (force * disY)
             }
@@ -155,7 +159,7 @@ data class ParticleState(var mass: Float, var posX: Float, var posY: Float) {
         return forceX to forceY
     }
 
-    private fun calculateXposAndVel(forceX: Float): Pair<Float, Float> {
+    private fun calculateXPosXVel(forceX: Float): Pair<Float, Float> {
         var newVelX = (velX + forceX) * Constants.FORCE_SCALE
         var newX = posX + newVelX
 
@@ -170,7 +174,7 @@ data class ParticleState(var mass: Float, var posX: Float, var posY: Float) {
         return newX to newVelX
     }
 
-    private fun calculateYposAndVel(forceY: Float): Pair<Float, Float> {
+    private fun calculateYPosYVel(forceY: Float): Pair<Float, Float> {
         var newVelY = (velY + forceY) * Constants.FORCE_SCALE
         var newY = posY + newVelY
 
