@@ -3,102 +3,72 @@ import kotlinx.coroutines.*
 import kotlin.math.*
 
 class StateCalculator(
-    private val yellowParticles: List<ParticleState>,
-    private val orangeParticles: List<ParticleState>,
-    private val whiteParticles: List<ParticleState>,
-    private val redParticles: List<ParticleState>,
-    private val purpleParticles: List<ParticleState>,
+    private val particleStates: ParticleStates,
     private val weights: ForceWeights,
     private val updateDelayMs: Long,
     var gravityWell: Double,
 ) {
 
-    private val allParticles = listOf(yellowParticles, orangeParticles, whiteParticles, redParticles, purpleParticles).flatten()
-
     fun calculate(scope: CoroutineScope, dispatcher: CoroutineDispatcher) {
-        yellowParticles.forEach { yellowParticle ->
-            scope.launch(dispatcher) {
-                while (true) {
-                    yellowParticle.applyRule(whiteParticles, weights.yellowWhite, gravityWell)
-                    yellowParticle.applyRule(orangeParticles, weights.yellowOrange, gravityWell)
-                    yellowParticle.applyRule(yellowParticles, weights.yellowYellow, gravityWell)
-                    yellowParticle.applyRule(redParticles, weights.yellowRed, gravityWell)
-                    yellowParticle.applyRule(purpleParticles, weights.yellowPurple, gravityWell)
-                    delay(updateDelayMs)
-                }
-            }
-        }
-        orangeParticles.forEach { orangeParticle ->
-            scope.launch(dispatcher) {
-                while (true) {
-                    orangeParticle.applyRule(whiteParticles, weights.orangeWhite, gravityWell)
-                    orangeParticle.applyRule(orangeParticles, weights.orangeOrange, gravityWell)
-                    orangeParticle.applyRule(yellowParticles, weights.orangeYellow, gravityWell)
-                    orangeParticle.applyRule(redParticles, weights.orangeRed, gravityWell)
-                    orangeParticle.applyRule(purpleParticles, weights.orangePurple, gravityWell)
-                    delay(updateDelayMs)
-                }
-            }
-        }
-        whiteParticles.forEach { whiteParticle ->
-            scope.launch(dispatcher) {
-                while (true) {
-                    whiteParticle.applyRule(whiteParticles, weights.whiteWhite, gravityWell)
-                    whiteParticle.applyRule(orangeParticles, weights.whiteOrange, gravityWell)
-                    whiteParticle.applyRule(yellowParticles, weights.whiteYellow, gravityWell)
-                    whiteParticle.applyRule(redParticles, weights.whiteRed, gravityWell)
-                    whiteParticle.applyRule(purpleParticles, weights.whitePurple, gravityWell)
-                    delay(updateDelayMs)
-                }
-            }
-        }
-        redParticles.forEach { redParticle ->
-            scope.launch(dispatcher) {
-                while (true) {
-                    redParticle.applyRule(whiteParticles, weights.redWhite, gravityWell)
-                    redParticle.applyRule(orangeParticles, weights.redOrange, gravityWell)
-                    redParticle.applyRule(yellowParticles, weights.redYellow, gravityWell)
-                    redParticle.applyRule(redParticles, weights.redRed, gravityWell)
-                    redParticle.applyRule(purpleParticles, weights.redPurple, gravityWell)
-                    delay(updateDelayMs)
-                }
-            }
-        }
-        purpleParticles.forEach { purpleParticle ->
-            scope.launch(dispatcher) {
-                while (true) {
-                    purpleParticle.applyRule(whiteParticles, weights.purpleWhite, gravityWell)
-                    purpleParticle.applyRule(orangeParticles, weights.purpleOrange, gravityWell)
-                    purpleParticle.applyRule(yellowParticles, weights.purpleYellow, gravityWell)
-                    purpleParticle.applyRule(redParticles, weights.purpleRed, gravityWell)
-                    purpleParticle.applyRule(purpleParticles, weights.purplePurple, gravityWell)
-                    delay(updateDelayMs)
+        particleStates.getTypes().forEach { fromType ->
+            particleStates.get(fromType).forEach { state ->
+                scope.launch(dispatcher) {
+                    while (true) {
+                        particleStates.getTypes().forEach { toType ->
+                            state.applyRule(particleStates.get(toType), weights.getWeight(fromType, toType), gravityWell)
+                        }
+                        delay(updateDelayMs)
+                    }
                 }
             }
         }
     }
+}
 
-    fun setMass(mass: Float) { allParticles.fastForEach { it.mass = mass } }
+class ParticleStates {
+
+    private val stateMap = mutableMapOf<ParticleType, MutableList<ParticleState>>()
+
+    fun get(type: ParticleType): List<ParticleState> = stateMap[type]!!
+
+    fun getTypes(): Set<ParticleType> = stateMap.keys
+
+    fun setMass(mass: Float) { stateMap.values.flatten().fastForEach { it.mass = mass } }
 
     fun randomizeMass() {
-        val whiteMass = RandomUtil.randomMass()
-        whiteParticles.fastForEach { it.mass = whiteMass }
-        val yellowMass = RandomUtil.randomMass()
-        yellowParticles.fastForEach { it.mass = yellowMass }
-        val orangeMass = RandomUtil.randomMass()
-        orangeParticles.fastForEach { it.mass = orangeMass }
-        val redMass = RandomUtil.randomMass()
-        redParticles.fastForEach { it.mass = redMass }
-        val purpleMass = RandomUtil.randomMass()
-        purpleParticles.fastForEach { it.mass = purpleMass }
+        getTypes().forEach { type ->
+            val randomMass = RandomUtil.randomMass()
+            get(type).fastForEach { it.mass = randomMass }
+        }
     }
 
     fun resetPosition() {
-        allParticles.fastForEach {
+        stateMap.values.flatten().fastForEach {
             it.posX = RandomUtil.randomXpos()
             it.posY = RandomUtil.randomYpos()
             it.velX = 0f
             it.velY = 0f
+        }
+    }
+
+    companion object {
+        fun buildDefault(countPerColor: Int): ParticleStates {
+            val states = ParticleStates()
+            ParticleType.values().forEach { type ->
+                val typeStates = mutableListOf<ParticleState>()
+                for (i in 1 .. countPerColor) {
+                    typeStates.add(
+                        ParticleState(
+                            mass = MainConstants.DEFAULT_PARTICLE_MASS,
+                            posX = RandomUtil.randomXpos(),
+                            posY = RandomUtil.randomYpos()
+                        )
+                    )
+                }
+                states.stateMap[type] = typeStates
+            }
+
+            return states
         }
     }
 }

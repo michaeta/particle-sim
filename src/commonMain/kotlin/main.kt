@@ -11,9 +11,7 @@ import com.soywiz.korim.format.*
 import com.soywiz.korio.concurrent.*
 import com.soywiz.korio.file.std.*
 import kotlinx.coroutines.*
-import kotlin.collections.List
 import kotlin.collections.forEach
-import kotlin.collections.mutableListOf
 import kotlin.collections.set
 
 object MainConstants {
@@ -37,17 +35,13 @@ suspend fun main() = Korge(
     bgcolor = Colors["#01090e"],
     batchMaxQuads = 2048)
 {
-    val yellowStates = createParticleStates()
-    val orangeStates = createParticleStates()
-    val whiteStates = createParticleStates()
-    val redStates = createParticleStates()
-    val purpleStates = createParticleStates()
     val weights = ForceWeights()
-    val stateCalculator = StateCalculator(yellowStates, orangeStates, whiteStates, redStates, purpleStates, weights,
-        MainConstants.POS_UPDATE_DELAY_MS, MainConstants.DEFAULT_GRAVITY_WELL)
+    val weights2 = ForceWeights.buildDefault()
+    val states2 = ParticleStates.buildDefault(MainConstants.PARTICLE_COUNT_PER_COLOR)
+    val stateCalculator = StateCalculator(states2, weights2, MainConstants.POS_UPDATE_DELAY_MS, MainConstants.DEFAULT_GRAVITY_WELL)
 
     drawBorder(MainConstants.WALL_THICKNESS.toInt())
-    openPropertiesWindow(weights, stateCalculator)
+    openPropertiesWindow(weights2, stateCalculator, states2)
 
     val dispatcher = Dispatchers.createFixedThreadDispatcher("particle", MainConstants.THREAD_COUNT)
     val particleBitmap = resourcesVfs["whiteAtom.png"].readBitmap(format = PNG)
@@ -57,25 +51,11 @@ suspend fun main() = Korge(
 
     addChild(container.createView(particleBitmap))
     container.apply {
-        yellowStates.forEach { yellowState ->
-            val sprite = initSprite(yellowState, particleTexture, Colors.YELLOW)
-            spriteParticleStateMap[sprite.id] = yellowState
-        }
-        orangeStates.forEach { orangeState ->
-            val sprite = initSprite(orangeState, particleTexture, Colors.ORANGE)
-            spriteParticleStateMap[sprite.id] = orangeState
-        }
-        whiteStates.forEach { whiteState ->
-            val sprite = initSprite(whiteState, particleTexture, Colors.WHITE)
-            spriteParticleStateMap[sprite.id] = whiteState
-        }
-        redStates.forEach { redState ->
-            val sprite = initSprite(redState, particleTexture, Colors.RED)
-            spriteParticleStateMap[sprite.id] = redState
-        }
-        purpleStates.forEach { purpleState ->
-            val sprite = initSprite(purpleState, particleTexture, Colors.MEDIUMPURPLE)
-            spriteParticleStateMap[sprite.id] = purpleState
+        states2.getTypes().forEach { type ->
+            states2.get(type).forEach { state ->
+                val sprite = initSprite(state, particleTexture, type.color)
+                spriteParticleStateMap[sprite.id] = state
+            }
         }
     }
 
@@ -94,15 +74,6 @@ suspend fun main() = Korge(
     coroutineScope { launch { stateCalculator.calculate(this, dispatcher) } }
 }
 
-private fun createParticleStates(): List<ParticleState> {
-    val states = mutableListOf<ParticleState>()
-    for (i in 1 .. MainConstants.PARTICLE_COUNT_PER_COLOR) {
-        states.add(ParticleState(MainConstants.DEFAULT_PARTICLE_MASS, RandomUtil.randomXpos(), RandomUtil.randomYpos()))
-    }
-
-    return states
-}
-
 private fun Stage.drawBorder(thickness: Int) {
     solidRect(MainConstants.WIDTH - 2 * MainConstants.WALL_BUFFER, thickness)
         .xy(MainConstants.WALL_BUFFER, MainConstants.WALL_BUFFER)
@@ -115,7 +86,7 @@ private fun Stage.drawBorder(thickness: Int) {
 }
 
 @OptIn(KorgeExperimental::class)
-private fun Stage.openPropertiesWindow(weights: ForceWeights, stateCalculator: StateCalculator) {
+private fun Stage.openPropertiesWindow(weights: ForceWeights, stateCalculator: StateCalculator, particleStates: ParticleStates) {
     uiWindow("Properties", 160.0, 215.0) {
         it.container.mobileBehaviour = true
         it.container.overflowRate = 0.0
@@ -124,9 +95,9 @@ private fun Stage.openPropertiesWindow(weights: ForceWeights, stateCalculator: S
                 min = 10.0, max = 1000.0, clamped = true))
             uiButton(text = "Randomize Gravity") { onClick { weights.randomize() }}
             uiButton(text = "Gravity Nudge") { onClick { weights.randomOffset() }}
-            uiButton(text = "Randomize Mass") { onClick { stateCalculator.randomizeMass() }}
-            uiButton(text = "Reset Mass") { onClick { stateCalculator.setMass(MainConstants.DEFAULT_PARTICLE_MASS) }}
-            uiButton(text = "Reset Position") { onClick { stateCalculator.resetPosition() }}
+            uiButton(text = "Randomize Mass") { onClick { particleStates.randomizeMass() }}
+            uiButton(text = "Reset Mass") { onClick { particleStates.setMass(MainConstants.DEFAULT_PARTICLE_MASS) }}
+            uiButton(text = "Reset Position") { onClick { particleStates.resetPosition() }}
         }
     }.xy(0, 0)
 }
