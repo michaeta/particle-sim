@@ -21,9 +21,11 @@ class ForceWeights {
     }
 
     companion object {
-        fun buildDefault(): ForceWeights {
+        fun buildDefault(): ForceWeights = buildForTypes(ParticleType.values().toSet())
+
+        fun buildForTypes(types: Set<ParticleType>): ForceWeights {
             val weights = ForceWeights()
-            ParticleType.values().forEach { fromType ->
+            types.forEach { fromType ->
                 ParticleType.values().forEach { toType ->
                     weights.putWeight(fromType, toType, RandomUtil.randomWeight())
                 }

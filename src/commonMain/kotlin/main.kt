@@ -35,8 +35,9 @@ suspend fun main() = Korge(
     bgcolor = Colors["#01090e"],
     batchMaxQuads = 2048)
 {
-    val forceWeights = ForceWeights.buildDefault()
-    val particleStates = ParticleStates.buildDefault(MainConstants.PARTICLE_COUNT_PER_COLOR)
+    val types = setOf(ParticleType.WHITE, ParticleType.RED, ParticleType.PURPLE)
+    val forceWeights = ForceWeights.buildForTypes(types)
+    val particleStates = ParticleStates.buildForTypes(types, MainConstants.PARTICLE_COUNT_PER_COLOR)
     val stateCalculator = StateCalculator(particleStates, forceWeights, MainConstants.POS_UPDATE_DELAY_MS, MainConstants.DEFAULT_GRAVITY_WELL)
 
     drawBorder(MainConstants.WALL_THICKNESS.toInt())

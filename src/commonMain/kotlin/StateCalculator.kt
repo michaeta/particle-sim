@@ -52,9 +52,11 @@ class ParticleStates {
     }
 
     companion object {
-        fun buildDefault(countPerColor: Int): ParticleStates {
+        fun buildDefault(countPerColor: Int): ParticleStates = buildForTypes(ParticleType.values().toSet(), countPerColor)
+
+        fun buildForTypes(types: Set<ParticleType>, countPerColor: Int): ParticleStates {
             val states = ParticleStates()
-            ParticleType.values().forEach { type ->
+            types.forEach { type ->
                 val typeStates = mutableListOf<ParticleState>()
                 for (i in 1 .. countPerColor) {
                     typeStates.add(
