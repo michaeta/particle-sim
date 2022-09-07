@@ -35,13 +35,12 @@ suspend fun main() = Korge(
     bgcolor = Colors["#01090e"],
     batchMaxQuads = 2048)
 {
-    val weights = ForceWeights()
-    val weights2 = ForceWeights.buildDefault()
-    val states2 = ParticleStates.buildDefault(MainConstants.PARTICLE_COUNT_PER_COLOR)
-    val stateCalculator = StateCalculator(states2, weights2, MainConstants.POS_UPDATE_DELAY_MS, MainConstants.DEFAULT_GRAVITY_WELL)
+    val forceWeights = ForceWeights.buildDefault()
+    val particleStates = ParticleStates.buildDefault(MainConstants.PARTICLE_COUNT_PER_COLOR)
+    val stateCalculator = StateCalculator(particleStates, forceWeights, MainConstants.POS_UPDATE_DELAY_MS, MainConstants.DEFAULT_GRAVITY_WELL)
 
     drawBorder(MainConstants.WALL_THICKNESS.toInt())
-    openPropertiesWindow(weights2, stateCalculator, states2)
+    openPropertiesWindow(forceWeights, stateCalculator, particleStates)
 
     val dispatcher = Dispatchers.createFixedThreadDispatcher("particle", MainConstants.THREAD_COUNT)
     val particleBitmap = resourcesVfs["whiteAtom.png"].readBitmap(format = PNG)
@@ -51,8 +50,8 @@ suspend fun main() = Korge(
 
     addChild(container.createView(particleBitmap))
     container.apply {
-        states2.getTypes().forEach { type ->
-            states2.get(type).forEach { state ->
+        particleStates.getTypes().forEach { type ->
+            particleStates.get(type).forEach { state ->
                 val sprite = initSprite(state, particleTexture, type.color)
                 spriteParticleStateMap[sprite.id] = state
             }
