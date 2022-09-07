@@ -41,5 +41,6 @@ enum class ParticleType(val color: RGBA) {
     ORANGE(Colors.ORANGE),
     WHITE(Colors.WHITE),
     RED(Colors.RED),
-    PURPLE(Colors.MEDIUMPURPLE)
+    PURPLE(Colors.MEDIUMPURPLE),
+    GREEN(Colors.GREEN)
 }
