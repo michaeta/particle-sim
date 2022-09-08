@@ -36,9 +36,11 @@ class ParticleStates {
     fun setMass(mass: Float) { stateMap.values.flatten().fastForEach { it.mass = mass } }
 
     fun randomizeMass() {
+        println("--------------------------------------------------------------------------------")
         getTypes().forEach { type ->
-            val randomMass = RandomUtil.randomMass()
-            get(type).fastForEach { it.mass = randomMass }
+            val mass = RandomUtil.randomMass()
+            println("$type mass: $mass")
+            get(type).fastForEach { it.mass = mass }
         }
     }
 

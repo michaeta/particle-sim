@@ -14,10 +14,21 @@ class ForceWeights {
 
     fun randomize() {
         weightsMap.values.forEach { toMap -> toMap.keys.forEach { toMap[it] = RandomUtil.randomWeight() } }
+        printWeights()
     }
 
     fun randomOffset() {
         weightsMap.values.forEach { toMap -> toMap.keys.forEach { toMap[it] = toMap[it]!! + RandomUtil.smallRandomWeight() } }
+        printWeights()
+    }
+
+    private fun printWeights() {
+        println("--------------------------------------------------------------------------------")
+        weightsMap.keys.forEach { fromType ->
+            weightsMap[fromType]!!.keys.forEach { toType ->
+                println("$fromType to $toType weight: ${weightsMap[fromType]!![toType]}")
+            }
+        }
     }
 
     companion object {
@@ -26,7 +37,7 @@ class ForceWeights {
         fun buildForTypes(types: Set<ParticleType>): ForceWeights {
             val weights = ForceWeights()
             types.forEach { fromType ->
-                ParticleType.values().forEach { toType ->
+                types.forEach { toType ->
                     weights.putWeight(fromType, toType, RandomUtil.randomWeight())
                 }
             }
