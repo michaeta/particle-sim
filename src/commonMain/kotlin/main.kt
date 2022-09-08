@@ -13,6 +13,7 @@ import com.soywiz.korio.file.std.*
 import kotlinx.coroutines.*
 import kotlin.collections.forEach
 import kotlin.collections.set
+import com.soywiz.kmem.*
 
 object MainConstants {
     const val WIDTH = 1600
@@ -20,7 +21,7 @@ object MainConstants {
     const val BITMAP_SIZE = 32
     const val WALL_BUFFER = 1
     const val WALL_THICKNESS = 2f
-    const val PARTICLE_COUNT_PER_COLOR = 1200
+    const val PARTICLE_COUNT_PER_COLOR = 1000
     const val DEFAULT_PARTICLE_SCALE = 0.125f
     const val DEFAULT_PARTICLE_MASS = 2f
     const val DEFAULT_GRAVITY_WELL = 210.0
@@ -35,11 +36,11 @@ suspend fun main() = Korge(
     bgcolor = Colors["#01090e"],
     batchMaxQuads = 2048)
 {
-    //val types = setOf(ParticleType.PURPLE, ParticleType.ORANGE, ParticleType.RED, ParticleType.WHITE, ParticleType.YELLOW, ParticleType.GREEN, ParticleType.PINK, ParticleType.GRAY)
-    val types = setOf(ParticleType.PURPLE, ParticleType.GRAY, ParticleType.GREEN, ParticleType.PINK)
+    val types = setOf(ParticleType.PURPLE, ParticleType.ORANGE, ParticleType.RED, ParticleType.WHITE, ParticleType.YELLOW, ParticleType.GREEN, ParticleType.PINK, ParticleType.GRAY)
+    //val types = setOf(ParticleType.PURPLE, ParticleType.GRAY, ParticleType.GREEN, ParticleType.PINK)
     val forceWeights = ForceWeights.buildForTypes(types)
-    val particleStates = ParticleStates.buildForTypes(types, MainConstants.PARTICLE_COUNT_PER_COLOR)
-    val stateCalculator = StateCalculator(particleStates, forceWeights, MainConstants.POS_UPDATE_DELAY_MS, MainConstants.DEFAULT_GRAVITY_WELL)
+    val particleStates = FastParticleStates.buildForTypes(types, MainConstants.PARTICLE_COUNT_PER_COLOR)
+    val stateCalculator = FastStateCalculator(particleStates, forceWeights, MainConstants.POS_UPDATE_DELAY_MS, MainConstants.DEFAULT_GRAVITY_WELL)
 
     drawBorder(MainConstants.WALL_THICKNESS.toInt())
     openPropertiesWindow(forceWeights, stateCalculator, particleStates)
@@ -48,28 +49,58 @@ suspend fun main() = Korge(
     val particleBitmap = resourcesVfs["whiteAtom.png"].readBitmap(format = PNG)
     val particleTexture = particleBitmap.sliceWithSize(0, 0, MainConstants.BITMAP_SIZE, MainConstants.BITMAP_SIZE)
     val container = FSprites(MainConstants.PARTICLE_COUNT_PER_COLOR * types.size)
-    val spriteParticleStateMap = mutableMapOf<Int, ParticleState>()
+    //val spriteParticleStateMap = mutableMapOf<Int, ParticleState>()
+    val spriteParticleStateMap = mutableMapOf<Int, Pair<Int, Float32Buffer>>()
 
     addChild(container.createView(particleBitmap))
+//    container.apply {
+//        particleStates.getTypes().forEach { type ->
+//            particleStates.get(type).forEach { state ->
+//                val sprite = initSprite(state, particleTexture, type.color)
+//                spriteParticleStateMap[sprite.id] = state
+//            }
+//        }
+//    }
     container.apply {
         particleStates.getTypes().forEach { type ->
-            particleStates.get(type).forEach { state ->
-                val sprite = initSprite(state, particleTexture, type.color)
-                spriteParticleStateMap[sprite.id] = state
+            val buffer = particleStates.get(type)
+            for (i in 0 until MainConstants.PARTICLE_COUNT_PER_COLOR) {
+                with(alloc()) {
+                    x = buffer[i * 9 + 1]
+                    y = buffer[i * 9 + 2]
+                    colorMul = type.color
+                    setTex(particleTexture)
+                    scaleX = MainConstants.DEFAULT_PARTICLE_SCALE
+                    scaleY = MainConstants.DEFAULT_PARTICLE_SCALE
+                    anchorX = (MainConstants.BITMAP_SIZE * scaleX) / 2f
+                    anchorY = (MainConstants.BITMAP_SIZE * scaleY) / 2f
+                    spriteParticleStateMap[id] = i to buffer
+                }
             }
         }
     }
 
+//    addFixedUpdater(MainConstants.GUI_UPDATE_FREQ) {
+//        container.fastForEach { sprite ->
+//            with(spriteParticleStateMap[sprite.id]!!) {
+//                sprite.x = posX
+//                sprite.y = posY
+//                sprite.scaleX = scaleX
+//                sprite.scaleY = scaleY
+//                sprite.anchorX = anchorX
+//                sprite.anchorY = anchorY
+//            }
+//        }
+//    }
     addFixedUpdater(MainConstants.GUI_UPDATE_FREQ) {
         container.fastForEach { sprite ->
-            with(spriteParticleStateMap[sprite.id]!!) {
-                sprite.x = posX
-                sprite.y = posY
-                sprite.scaleX = scaleX
-                sprite.scaleY = scaleY
-                sprite.anchorX = anchorX
-                sprite.anchorY = anchorY
-            }
+            val (index, buffer) = spriteParticleStateMap[sprite.id]!!
+            sprite.x = buffer[index * 9 + 1]
+            sprite.y = buffer[index * 9 + 2]
+            sprite.scaleX = buffer[index * 9 + 5]
+            sprite.scaleY = buffer[index * 9 + 6]
+            sprite.anchorX = buffer[index * 9 + 7]
+            sprite.anchorY = buffer[index * 9 + 8]
         }
     }
     coroutineScope { launch { stateCalculator.calculate(this, dispatcher) } }
@@ -87,7 +118,7 @@ private fun Stage.drawBorder(thickness: Int) {
 }
 
 @OptIn(KorgeExperimental::class)
-private fun Stage.openPropertiesWindow(weights: ForceWeights, stateCalculator: StateCalculator, particleStates: ParticleStates) {
+private fun Stage.openPropertiesWindow(weights: ForceWeights, stateCalculator: FastStateCalculator, particleStates: FastParticleStates) {
     uiWindow("Properties", 160.0, 215.0) {
         it.container.mobileBehaviour = true
         it.container.overflowRate = 0.0
