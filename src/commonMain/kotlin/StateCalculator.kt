@@ -82,17 +82,6 @@ class ParticleStates {
 
 data class ParticleState(var posX: Float, var posY: Float) {
 
-    object Constants {
-        const val MAX_SCALE_VEL = 0.6f
-        const val MAX_SCALE = 0.27f
-        const val MIN_SCALE = 0.09f
-        const val X_MIN = MainConstants.WALL_BUFFER + MainConstants.WALL_THICKNESS
-        const val X_MAX = MainConstants.WIDTH - MainConstants.WALL_BUFFER - MainConstants.WALL_THICKNESS
-        const val Y_MIN = MainConstants.WALL_BUFFER + MainConstants.WALL_THICKNESS
-        const val Y_MAX = MainConstants.HEIGHT - MainConstants.WALL_BUFFER - MainConstants.WALL_THICKNESS
-        const val FORCE_SCALE = 0.4f
-    }
-
     var velX = 0.0f
     var velY = 0.0f
     var scaleX = MainConstants.DEFAULT_PARTICLE_SCALE
@@ -107,76 +96,96 @@ data class ParticleState(var posX: Float, var posY: Float) {
         gravity: Float,
         gravityWell: Double)
     {
-        val (forceX, forceY) = calculateForce(myMass, otherMass, otherParticles, gravity, gravityWell)
-        val (newX, newVelX) = calculateXPosXVel(forceX)
-        val (newY, newVelY) = calculateYPosYVel(forceY)
+        val (forceX, forceY) = Rules.calculateForce(this, myMass, otherMass, otherParticles, gravity, gravityWell)
+        Rules.calculateXPosXVel(this, forceX).let {
+            posX = it.first
+            velX = it.second
+        }
+        Rules.calculateYPosYVel(this, forceY).let {
+            posY = it.first
+            velY = it.second
+        }
 
-        posX = newX
-        posY = newY
-        velX = newVelX
-        velY = newVelY
-        scaleX = normalizeParticleScale(abs(newVelY))
-        scaleY = normalizeParticleScale(abs(newVelX))
+        scaleX = Rules.calculateScale(velY)
+        scaleY = Rules.calculateScale(velX)
         anchorX = (MainConstants.BITMAP_SIZE * scaleX) / 2f
         anchorY = (MainConstants.BITMAP_SIZE * scaleY) / 2f
     }
+}
 
-    private fun calculateForce(
-        myMass: Float,
-        otherMass: Float,
-        otherParticles: List<ParticleState>,
-        gravity: Float,
-        gravityWell: Double
-    ): Pair<Float, Float> {
-        var forceX = 0.0f
-        var forceY = 0.0f
-        otherParticles.fastForEach { otherParticle ->
-            val disX = posX - otherParticle.posX
-            val disY = posY - otherParticle.posY
-            val disTotal = sqrt(disX*disX + disY*disY)
-            if (disTotal > 0 && disTotal < gravityWell) {
-                val force = (gravity * myMass * otherMass) / (disTotal * disTotal)
-                forceX += (force * disX)
-                forceY += (force * disY)
+class Rules {
+
+    object Constants {
+        const val MAX_SCALE_VEL = 0.6f
+        const val MAX_SCALE = 0.27f
+        const val MIN_SCALE = 0.09f
+        const val MIN_X = MainConstants.WALL_BUFFER + MainConstants.WALL_THICKNESS
+        const val MAX_X = MainConstants.WIDTH - MainConstants.WALL_BUFFER - MainConstants.WALL_THICKNESS
+        const val MIN_Y = MainConstants.WALL_BUFFER + MainConstants.WALL_THICKNESS
+        const val MAX_Y = MainConstants.HEIGHT - MainConstants.WALL_BUFFER - MainConstants.WALL_THICKNESS
+        const val FORCE_SCALE = 0.4f
+    }
+
+    companion object {
+
+        fun calculateForce(
+            myParticle: ParticleState,
+            myMass: Float,
+            otherMass: Float,
+            otherParticles: List<ParticleState>,
+            gravity: Float,
+            gravityWell: Double
+        ): Pair<Float, Float> {
+            var forceX = 0.0f
+            var forceY = 0.0f
+            otherParticles.fastForEach { otherParticle ->
+                val disX = myParticle.posX - otherParticle.posX
+                val disY = myParticle.posY - otherParticle.posY
+                val disTotal = sqrt(disX*disX + disY*disY)
+                if (disTotal > 0 && disTotal < gravityWell) {
+                    val force = (gravity * myMass * otherMass) / (disTotal * disTotal)
+                    forceX += (force * disX)
+                    forceY += (force * disY)
+                }
             }
+
+            return forceX to forceY
         }
 
-        return forceX to forceY
-    }
+        fun calculateXPosXVel(myParticle: ParticleState, forceX: Float): Pair<Float, Float> {
+            var newVelX = (myParticle.velX + forceX) * Constants.FORCE_SCALE
+            var newX = myParticle.posX + newVelX
 
-    private fun calculateXPosXVel(forceX: Float): Pair<Float, Float> {
-        var newVelX = (velX + forceX) * Constants.FORCE_SCALE
-        var newX = posX + newVelX
+            if (newX < Constants.MIN_X + myParticle.anchorX*2) {
+                newX = Constants.MIN_X + myParticle.anchorX*2
+                newVelX *= -1
+            } else if (newX > Constants.MAX_X) {
+                newX = Constants.MAX_X
+                newVelX *= -1
+            }
 
-        if (newX < Constants.X_MIN + anchorX*2) {
-            newX = Constants.X_MIN + anchorX*2
-            newVelX *= -1
-        } else if (newX > Constants.X_MAX) {
-            newX = Constants.X_MAX
-            newVelX *= -1
+            return newX to newVelX
         }
 
-        return newX to newVelX
-    }
+        fun calculateYPosYVel(myParticle: ParticleState, forceY: Float): Pair<Float, Float> {
+            var newVelY = (myParticle.velY + forceY) * Constants.FORCE_SCALE
+            var newY = myParticle.posY + newVelY
 
-    private fun calculateYPosYVel(forceY: Float): Pair<Float, Float> {
-        var newVelY = (velY + forceY) * Constants.FORCE_SCALE
-        var newY = posY + newVelY
+            if (newY < Constants.MIN_Y + myParticle.anchorY*2) {
+                newY = Constants.MIN_Y + myParticle.anchorY*2
+                newVelY *= -1
+            } else if (newY > Constants.MAX_Y) {
+                newY = Constants.MAX_Y
+                newVelY *= -1
+            }
 
-        if (newY < Constants.Y_MIN + anchorY*2) {
-            newY = Constants.Y_MIN + anchorY*2
-            newVelY *= -1
-        } else if (newY > Constants.Y_MAX) {
-            newY = Constants.Y_MAX
-            newVelY *= -1
+            return newY to newVelY
         }
 
-        return newY to newVelY
-    }
+        fun calculateScale(value: Float): Float {
+            val vel = if (abs(value) > Constants.MAX_SCALE_VEL) Constants.MAX_SCALE_VEL else abs(value)
 
-    private fun normalizeParticleScale(value: Float): Float {
-        val vel = if (value > Constants.MAX_SCALE_VEL) Constants.MAX_SCALE_VEL else value
-
-        return Constants.MAX_SCALE - (vel/Constants.MAX_SCALE_VEL) * (Constants.MAX_SCALE - Constants.MIN_SCALE)
+            return Constants.MAX_SCALE - (vel/Constants.MAX_SCALE_VEL) * (Constants.MAX_SCALE - Constants.MIN_SCALE)
+        }
     }
 }
