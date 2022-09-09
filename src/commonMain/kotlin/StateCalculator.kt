@@ -3,19 +3,25 @@ import kotlinx.coroutines.*
 import kotlin.math.*
 
 class StateCalculator(
-    private val particleStates: ParticleStates,
+    private val states: ParticleStates,
     private val weights: ForceWeights,
     private val updateDelayMs: Long,
     var gravityWell: Double,
 ) {
 
     fun calculate(scope: CoroutineScope, dispatcher: CoroutineDispatcher) {
-        particleStates.getTypes().forEach { fromType ->
-            particleStates.get(fromType).forEach { state ->
+        states.getTypes().forEach { fromType ->
+            states.get(fromType).forEach { state ->
                 scope.launch(dispatcher) {
                     while (true) {
-                        particleStates.getTypes().forEach { toType ->
-                            state.applyRule(particleStates.get(toType), weights.getWeight(fromType, toType), gravityWell)
+                        states.getTypes().forEach { toType ->
+                            state.applyRule(
+                                myMass = states.getMass(fromType),
+                                otherMass = states.getMass(toType),
+                                otherParticles = states.get(toType),
+                                gravity = weights.getWeight(fromType, toType),
+                                gravityWell = gravityWell
+                            )
                         }
                         delay(updateDelayMs)
                     }
@@ -28,19 +34,21 @@ class StateCalculator(
 class ParticleStates {
 
     private val stateMap = mutableMapOf<ParticleType, MutableList<ParticleState>>()
+    private val massMap = mutableMapOf<ParticleType, Float>()
 
     fun get(type: ParticleType): List<ParticleState> = stateMap[type]!!
 
     fun getTypes(): Set<ParticleType> = stateMap.keys
 
-    fun setMass(mass: Float) { stateMap.values.flatten().fastForEach { it.mass = mass } }
+    fun getMass(type: ParticleType): Float = massMap[type]!!
+
+    fun setMass(mass: Float) { massMap.keys.forEach { massMap[it] = mass } }
 
     fun randomizeMass() {
         println("--------------------------------------------------------------------------------")
-        getTypes().forEach { type ->
+        massMap.keys.forEach {
             val mass = RandomUtil.randomMass()
-            println("$type mass: $mass")
-            get(type).fastForEach { it.mass = mass }
+            massMap[it] = mass
         }
     }
 
@@ -61,15 +69,10 @@ class ParticleStates {
             types.forEach { type ->
                 val typeStates = mutableListOf<ParticleState>()
                 for (i in 1 .. countPerColor) {
-                    typeStates.add(
-                        ParticleState(
-                            mass = MainConstants.DEFAULT_PARTICLE_MASS,
-                            posX = RandomUtil.randomXpos(),
-                            posY = RandomUtil.randomYpos()
-                        )
-                    )
+                    typeStates.add(ParticleState(posX = RandomUtil.randomXpos(), posY = RandomUtil.randomYpos()))
                 }
                 states.stateMap[type] = typeStates
+                states.massMap[type] = MainConstants.DEFAULT_PARTICLE_MASS
             }
 
             return states
@@ -77,7 +80,7 @@ class ParticleStates {
     }
 }
 
-data class ParticleState(var mass: Float, var posX: Float, var posY: Float) {
+data class ParticleState(var posX: Float, var posY: Float) {
 
     object Constants {
         const val MAX_SCALE_VEL = 0.6f
@@ -97,8 +100,14 @@ data class ParticleState(var mass: Float, var posX: Float, var posY: Float) {
     var anchorX = 0f
     var anchorY = 0f
 
-    fun applyRule(otherParticles: List<ParticleState>, gravity: Float, gravityWell: Double) {
-        val (forceX, forceY) = calculateForce(otherParticles, gravity, gravityWell)
+    fun applyRule(
+        myMass: Float,
+        otherMass: Float,
+        otherParticles: List<ParticleState>,
+        gravity: Float,
+        gravityWell: Double)
+    {
+        val (forceX, forceY) = calculateForce(myMass, otherMass, otherParticles, gravity, gravityWell)
         val (newX, newVelX) = calculateXPosXVel(forceX)
         val (newY, newVelY) = calculateYPosYVel(forceY)
 
@@ -113,6 +122,8 @@ data class ParticleState(var mass: Float, var posX: Float, var posY: Float) {
     }
 
     private fun calculateForce(
+        myMass: Float,
+        otherMass: Float,
         otherParticles: List<ParticleState>,
         gravity: Float,
         gravityWell: Double
@@ -124,7 +135,7 @@ data class ParticleState(var mass: Float, var posX: Float, var posY: Float) {
             val disY = posY - otherParticle.posY
             val disTotal = sqrt(disX*disX + disY*disY)
             if (disTotal > 0 && disTotal < gravityWell) {
-                val force = (gravity * mass * otherParticle.mass) / (disTotal * disTotal)
+                val force = (gravity * myMass * otherMass) / (disTotal * disTotal)
                 forceX += (force * disX)
                 forceY += (force * disY)
             }
