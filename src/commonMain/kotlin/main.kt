@@ -22,7 +22,7 @@ object MainConstants {
     const val WALL_THICKNESS = 2f
     const val PARTICLE_COUNT_PER_COLOR = 1200
     const val DEFAULT_PARTICLE_SCALE = 0.125f
-    const val DEFAULT_PARTICLE_MASS = 2f
+    const val DEFAULT_PARTICLE_MASS = 3f
     const val DEFAULT_GRAVITY_WELL = 210.0
     const val THREAD_COUNT = 16
     val POS_UPDATE_DELAY_MS = Frequency(40.0).timeSpan.milliseconds.toLong()
