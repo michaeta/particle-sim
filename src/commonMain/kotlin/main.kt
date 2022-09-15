@@ -15,8 +15,8 @@ import kotlin.collections.forEach
 import kotlin.collections.set
 
 object MainConstants {
-    const val WIDTH = 1600
-    const val HEIGHT = 900
+    const val WIDTH = 1760
+    const val HEIGHT = 990
     const val BITMAP_SIZE = 32
     const val WALL_BUFFER = 1
     const val WALL_THICKNESS = 2f
