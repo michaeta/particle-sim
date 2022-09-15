@@ -124,7 +124,7 @@ class Rules {
         private const val MAX_X = MainConstants.WIDTH - MainConstants.WALL_BUFFER - MainConstants.WALL_THICKNESS
         private const val MIN_Y = MainConstants.WALL_BUFFER + MainConstants.WALL_THICKNESS
         private const val MAX_Y = MainConstants.HEIGHT - MainConstants.WALL_BUFFER - MainConstants.WALL_THICKNESS
-        private const val FORCE_SCALE = 0.35f
+        private const val FORCE_SCALE = 0.3f
 
         fun calculateForce(
             myParticle: ParticleState,

@@ -20,7 +20,7 @@ object MainConstants {
     const val BITMAP_SIZE = 32
     const val WALL_BUFFER = 1
     const val WALL_THICKNESS = 2f
-    const val PARTICLE_COUNT_PER_COLOR = 1200
+    const val PARTICLE_COUNT_PER_COLOR = 600
     const val DEFAULT_PARTICLE_SCALE = 0.125f
     const val DEFAULT_PARTICLE_MASS = 3f
     const val DEFAULT_GRAVITY_WELL = 210.0
@@ -35,8 +35,8 @@ suspend fun main() = Korge(
     bgcolor = Colors["#01090e"],
     batchMaxQuads = 2048)
 {
-    //val types = setOf(ParticleType.PURPLE, ParticleType.ORANGE, ParticleType.RED, ParticleType.WHITE, ParticleType.YELLOW, ParticleType.GREEN, ParticleType.PINK, ParticleType.GRAY)
-    val types = setOf(ParticleType.PURPLE, ParticleType.GRAY, ParticleType.GREEN, ParticleType.PINK)
+    val types = setOf(ParticleType.PURPLE, ParticleType.ORANGE, ParticleType.RED, ParticleType.WHITE, ParticleType.YELLOW, ParticleType.GREEN, ParticleType.PINK, ParticleType.GRAY)
+    //val types = setOf(ParticleType.PURPLE, ParticleType.GRAY, ParticleType.GREEN, ParticleType.PINK)
     val forceWeights = ForceWeights.buildForTypes(types)
     val particleStates = ParticleStates.buildForTypes(types, MainConstants.PARTICLE_COUNT_PER_COLOR)
     val stateCalculator = StateCalculator(particleStates, forceWeights, MainConstants.POS_UPDATE_DELAY_MS, MainConstants.DEFAULT_GRAVITY_WELL)
