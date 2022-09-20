@@ -111,19 +111,21 @@ class Rules {
             gravityWell: Double)
         {
             val (forceX, forceY) = calculateForce(myParticle, myMass, otherMass, otherParticles, gravity, gravityWell)
-            calculateXPosVel(myParticle, forceX).let {
-                myParticle.posX = it.first
-                myParticle.velX = it.second
-            }
-            calculateYPosVel(myParticle, forceY).let {
-                myParticle.posY = it.first
-                myParticle.velY = it.second
-            }
+            with(myParticle) {
+                calculateXPosVel(myParticle, forceX).let {
+                    posX = it.first
+                    velX = it.second
+                }
+                calculateYPosVel(myParticle, forceY).let {
+                    posY = it.first
+                    velY = it.second
+                }
 
-            myParticle.scaleX = calculateScale(myParticle.velY)
-            myParticle.scaleY = calculateScale(myParticle.velX)
-            myParticle.anchorX = (MainConstants.BITMAP_SIZE * myParticle.scaleX) / 2f
-            myParticle.anchorY = (MainConstants.BITMAP_SIZE * myParticle.scaleY) / 2f
+                scaleX = calculateScale(velY)
+                scaleY = calculateScale(velX)
+                anchorX = (MainConstants.BITMAP_SIZE * scaleX) / 2f
+                anchorY = (MainConstants.BITMAP_SIZE * scaleY) / 2f
+            }
         }
 
         private fun calculateForce(
